@@ -1,0 +1,54 @@
+# ============================================================================
+#  Laser RAG QA — .gitignore
+# ============================================================================
+
+# Environment & secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Vector store (large binary files)
+chroma_db/
+
+# Model cache
+models/
+model_cache/
+
+# Logs
+*.log
+logs/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+tmp/
+
+# ChromaDB persistent data
+chroma_db/
+
+# Claude Code local settings
+.claude/
+
+# Windows Zone.Identifier
+*:Zone.Identifier

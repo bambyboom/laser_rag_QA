@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laser RAG QA — 激光器行业知识库问答系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ============================================================
+      Header
+    ============================================================ -->
+    <header class="app-header">
+        <div class="header-left">
+            <span class="logo">⚡</span>
+            <h1 class="app-title">Laser RAG QA</h1>
+            <span class="app-subtitle">激光器知识库</span>
+        </div>
+        <div class="header-right">
+            <button id="new-chat-btn" class="btn-header" title="新建对话">＋ 新对话</button>
+            <span id="status-indicator" class="status-dot status-idle" title="服务状态"></span>
+            <span id="status-text" class="status-text">就绪</span>
+        </div>
+    </header>
+
+    <!-- ============================================================
+      Chat Area
+    ============================================================ -->
+    <main class="chat-area" id="chat-area">
+        <!-- Welcome placeholder -->
+        <div class="welcome" id="welcome">
+            <div class="welcome-icon">🔬</div>
+            <h2>激光器行业知识问答</h2>
+            <p>基于 RAG 技术的专业知识库，覆盖固体激光器、气体激光器、半导体激光器等领域。</p>
+            <div class="quick-prompts">
+                <span class="prompt-label">快速提问：</span>
+                <button class="prompt-chip" data-prompt="Nd:YAG激光器的典型输出功率范围是多少？">Nd:YAG 输出功率</button>
+                <button class="prompt-chip" data-prompt="CO₂激光器的工作原理是什么？">CO₂ 激光器原理</button>
+                <button class="prompt-chip" data-prompt="光纤激光器和固体激光器有什么区别？">光纤 vs 固体激光器</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================================================
+      Input Bar
+    ============================================================ -->
+    <footer class="input-bar">
+        <div class="input-wrapper">
+            <textarea
+                id="question-input"
+                class="question-input"
+                rows="1"
+                placeholder="输入您的激光器问题，按 Enter 发送..."
+                autofocus
+            ></textarea>
+            <button id="send-btn" class="send-btn" title="发送 (Enter)">
+                <svg id="send-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <svg id="stop-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:none">
+                    <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                </svg>
+            </button>
+        </div>
+        <p class="input-hint">Enter 发送 · Shift+Enter 换行</p>
+    </footer>
+
+    <!-- ============================================================
+      Templates (cloned at runtime)
+    ============================================================ -->
+    <template id="tpl-user-msg">
+        <div class="message message-user">
+            <div class="msg-bubble msg-bubble-user"></div>
+        </div>
+    </template>
+
+    <template id="tpl-assistant-msg">
+        <div class="message message-assistant">
+            <div class="msg-bubble msg-bubble-assistant">
+                <div class="msg-content"></div>
+                <div class="msg-refs" hidden>
+                    <button class="refs-toggle">
+                        <span class="refs-toggle-icon">▸</span>
+                        <span class="refs-toggle-label">参考来源</span>
+                        <span class="refs-count"></span>
+                    </button>
+                    <div class="refs-list" hidden></div>
+                </div>
+                <div class="msg-meta">
+                    <span class="msg-finish-reason"></span>
+                </div>
+            </div>
+            <div class="msg-actions">
+                <button class="btn-retry" title="重新生成" hidden>🔄 重试</button>
+            </div>
+        </div>
+    </template>
+
+    <script src="app.js"></script>
+</body>
+</html>
