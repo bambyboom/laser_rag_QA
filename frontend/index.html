@@ -53,6 +53,11 @@
                 placeholder="输入您的激光器问题，按 Enter 发送..."
                 autofocus
             ></textarea>
+            <label class="web-search-toggle" title="开启后，将通过网络搜索补充最新信息">
+                <input type="checkbox" id="web-search-checkbox">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">🌐 联网搜索</span>
+            </label>
             <button id="send-btn" class="send-btn" title="发送 (Enter)">
                 <svg id="send-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -63,7 +68,7 @@
                 </svg>
             </button>
         </div>
-        <p class="input-hint">Enter 发送 · Shift+Enter 换行</p>
+        <p class="input-hint">Enter 发送 · Shift+Enter 换行 · 🌐 联网搜索可获取最新网络信息</p>
     </footer>
 
     <!-- ============================================================

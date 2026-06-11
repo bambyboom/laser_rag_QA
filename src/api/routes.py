@@ -83,6 +83,7 @@ async def chat(request: ChatRequest):
         async for sse_chunk in qa.run(
             question=request.question,
             history=request.history,
+            enable_web_search=request.enable_web_search,
         ):
             yield sse_chunk
 

@@ -64,8 +64,18 @@ class DocumentLoader:
                 continue
 
             if not text.strip():
-                logger.warning("Empty content in %s — skipping", file_path.name)
-                continue
+                # PDFs may be scanned (no text layer) — keep them for OCR.
+                # Other formats with empty content are genuinely empty → skip.
+                if suffix == ".pdf":
+                    logger.warning(
+                        "Empty content in %s — keeping for OCR processing",
+                        file_path.name,
+                    )
+                else:
+                    logger.warning(
+                        "Empty content in %s — skipping", file_path.name
+                    )
+                    continue
 
             records.append({"filename": file_path.name, "text": text})
             logger.info("Loaded %s (%d chars)", file_path.name, len(text))

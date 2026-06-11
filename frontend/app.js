@@ -384,6 +384,7 @@
                 const payload = {
                     question: questionText,
                     history: conversationHistory.length > 0 ? conversationHistory : undefined,
+                    enable_web_search: document.getElementById("web-search-checkbox").checked,
                 };
 
                 const response = await fetch(CHAT_URL, {

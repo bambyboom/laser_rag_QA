@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Sequence
 
 from src.knowledge.cleaner import TextCleaner, get_cleaner
 from src.knowledge.embedder import EmbeddedChunk, Embedder
 from src.knowledge.loader import DocumentLoader
+from src.knowledge.ocr import OcrProcessor
 from src.knowledge.splitter import TextChunk, TextSplitter
 from src.knowledge.store import VectorStore
 
@@ -34,6 +34,7 @@ class IngestPipeline:
         self.splitter = TextSplitter()
         self.embedder = Embedder()
         self.store = VectorStore()
+        self._ocr: OcrProcessor | None = None
 
     # ------------------------------------------------------------------
     #  full batch (directory → store)
@@ -52,33 +53,38 @@ class IngestPipeline:
         if not docs:
             logger.warning("No documents found — aborting ingest")
             return 0
-        logger.info("Step 1/5  loaded %d document(s)", len(docs))
+        logger.info("Step 1/6  loaded %d document(s)", len(docs))
+
+        # ---- 1.5 OCR (detect scanned PDFs) ----------------------------
+        ocr_raw_dir = Path(raw_dir) if raw_dir else loader._raw_dir
+        docs = self._get_ocr().process_docs(docs, ocr_raw_dir)
+        logger.info("Step 1.5/6 OCR processed")
 
         # ---- 2. clean --------------------------------------------------
         docs = self.cleaner.clean_batch(docs)
         if not docs:
             logger.warning("All documents empty after cleaning — aborting ingest")
             return 0
-        logger.info("Step 2/5  cleaned → %d document(s)", len(docs))
+        logger.info("Step 2/6  cleaned → %d document(s)", len(docs))
 
         # ---- 3. split --------------------------------------------------
         chunks: list[TextChunk] = self.splitter.split_batch(docs)
         if not chunks:
             logger.warning("No chunks produced — aborting ingest")
             return 0
-        logger.info("Step 3/5  split → %d chunk(s)", len(chunks))
+        logger.info("Step 3/6  split → %d chunk(s)", len(chunks))
 
         # ---- 4. embed --------------------------------------------------
         embedded: list[EmbeddedChunk] = self.embedder.embed_chunks(chunks)
         logger.info(
-            "Step 4/5  embedded → %d vector(s) (dim=%d)",
+            "Step 4/6  embedded → %d vector(s) (dim=%d)",
             len(embedded),
             len(embedded[0].embedding) if embedded else 0,
         )
 
         # ---- 5. store --------------------------------------------------
         stored = self.store.add(embedded)
-        logger.info("Step 5/5  stored %d chunk(s) in vectorstore", stored)
+        logger.info("Step 5/6  stored %d chunk(s) in vectorstore", stored)
         return stored
 
     # ------------------------------------------------------------------
@@ -94,7 +100,11 @@ class IngestPipeline:
             raise FileNotFoundError(f"File not found: {fp}")
 
         doc = self.loader.load_file(fp)
-        return self._process_docs([doc])
+
+        # OCR scanned PDFs — use the file's parent directory
+        docs = self._get_ocr().process_docs([doc], fp.parent)
+
+        return self._process_docs(docs)
 
     # ------------------------------------------------------------------
     #  raw text (for API uploads)
@@ -126,3 +136,21 @@ class IngestPipeline:
 
         embedded = self.embedder.embed_chunks(chunks)
         return self.store.add(embedded)
+
+    # ------------------------------------------------------------------
+    #  lazy initialisers
+    # ------------------------------------------------------------------
+    def _get_ocr(self) -> OcrProcessor:
+        if self._ocr is None:
+            from config import settings
+
+            self._ocr = OcrProcessor(
+                enabled=settings.ocr_enabled,
+                force=settings.ocr_force,
+                language=settings.ocr_language,
+                dpi=settings.ocr_dpi,
+                min_text_length=settings.ocr_min_text_length,
+                tesseract_cmd=settings.ocr_tesseract_cmd,
+                tessdata_prefix=settings.ocr_tessdata_prefix,
+            )
+        return self._ocr

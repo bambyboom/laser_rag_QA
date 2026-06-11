@@ -123,6 +123,33 @@ RERANKER_TOP_N: int = _env_int("RERANKER_TOP_N", 5)
 RERANKER_MAX_CHUNK_CHARS: int = _env_int("RERANKER_MAX_CHUNK_CHARS", 800)
 
 # ===========================================================================
+#  Web Search  (DuckDuckGo)
+# ===========================================================================
+WEB_SEARCH_ENABLED: bool = _env_bool("WEB_SEARCH_ENABLED", True)
+WEB_SEARCH_MAX_RESULTS: int = _env_int("WEB_SEARCH_MAX_RESULTS", 5)
+WEB_SEARCH_REGION: str = _env("WEB_SEARCH_REGION", "wt-wt")
+WEB_SEARCH_TIMELIMIT: str | None = _env("WEB_SEARCH_TIMELIMIT", "") or None
+
+# ===========================================================================
+#  Routing
+# ===========================================================================
+RERANK_KB_SUFFICIENT_THRESHOLD: int = _env_int("RERANK_KB_SUFFICIENT_THRESHOLD", 7)
+RERANK_RELEVANT_CHUNK_MIN: int = _env_int("RERANK_RELEVANT_CHUNK_MIN", 4)
+RERANK_RELEVANT_CHUNK_COUNT: int = _env_int("RERANK_RELEVANT_CHUNK_COUNT", 2)
+RERANK_OUT_OF_DOMAIN_THRESHOLD: int = _env_int("RERANK_OUT_OF_DOMAIN_THRESHOLD", 3)
+
+# ===========================================================================
+#  OCR — Scanned PDF to text via Tesseract
+# ===========================================================================
+OCR_ENABLED: bool = _env_bool("OCR_ENABLED", True)
+OCR_LANGUAGE: str = _env("OCR_LANGUAGE", "chi_sim+eng")
+OCR_DPI: int = _env_int("OCR_DPI", 300)
+OCR_FORCE: bool = _env_bool("OCR_FORCE", False)
+OCR_MIN_TEXT_LENGTH: int = _env_int("OCR_MIN_TEXT_LENGTH", 50)
+OCR_TESSERACT_CMD: str = _env("OCR_TESSERACT_CMD", "tesseract")
+OCR_TESSDATA_PREFIX: str = _env("OCR_TESSDATA_PREFIX", "")
+
+# ===========================================================================
 #  Prompt template
 # ===========================================================================
 RAG_SYSTEM_PROMPT: str = _env(
@@ -255,6 +282,15 @@ class Settings:
     data_dir: Path = DATA_DIR
     supported_suffixes: tuple[str, ...] = SUPPORTED_SUFFIXES
 
+    # OCR
+    ocr_enabled: bool = OCR_ENABLED
+    ocr_language: str = OCR_LANGUAGE
+    ocr_dpi: int = OCR_DPI
+    ocr_force: bool = OCR_FORCE
+    ocr_min_text_length: int = OCR_MIN_TEXT_LENGTH
+    ocr_tesseract_cmd: str = OCR_TESSERACT_CMD
+    ocr_tessdata_prefix: str = OCR_TESSDATA_PREFIX
+
     # Cleaning
     cleaner_noise_patterns: list[str] = field(default_factory=lambda: list(CLEANER_NOISE_PATTERNS))
     cleaner_min_line_length: int = CLEANER_MIN_LINE_LENGTH
@@ -278,6 +314,18 @@ class Settings:
     reranker_enabled: bool = RERANKER_ENABLED
     reranker_top_n: int = RERANKER_TOP_N
     reranker_max_chunk_chars: int = RERANKER_MAX_CHUNK_CHARS
+
+    # Web Search
+    web_search_enabled: bool = WEB_SEARCH_ENABLED
+    web_search_max_results: int = WEB_SEARCH_MAX_RESULTS
+    web_search_region: str = WEB_SEARCH_REGION
+    web_search_timelimit: str | None = WEB_SEARCH_TIMELIMIT
+
+    # Routing
+    rerank_kb_sufficient_threshold: int = RERANK_KB_SUFFICIENT_THRESHOLD
+    rerank_relevant_chunk_min: int = RERANK_RELEVANT_CHUNK_MIN
+    rerank_relevant_chunk_count: int = RERANK_RELEVANT_CHUNK_COUNT
+    rerank_out_of_domain_threshold: int = RERANK_OUT_OF_DOMAIN_THRESHOLD
 
     # Prompt
     rag_system_prompt: str = RAG_SYSTEM_PROMPT

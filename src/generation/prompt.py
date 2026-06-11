@@ -354,3 +354,174 @@ def _format_few_shots(examples: list[dict[str, str]] | None) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+# ===========================================================================
+#  Route-specific system prompts
+# ===========================================================================
+
+# Refuse answer — returned directly without an LLM call
+REFUSE_ANSWER: str = "抱歉，根据当前知识库无法回答此问题。"
+
+# KB-only system prompt — strictly forbids fabrication or use of external
+# knowledge.  When the KB has sufficient relevant content.
+RAG_SYSTEM_PROMPT_KB_ONLY: str = (
+    "你是激光器行业知识库的顶级专家助手。你**只能**基于下面提供的参考资料"
+    "回答问题，绝不添加任何外部信息。\n\n"
+    "## 铁律（必须无条件遵守）\n"
+    "1. **禁止编造**：绝不添加知识库之外的信息。如果参考资料中没有足够的"
+    "信息来完整回答，直接回答「抱歉，根据当前知识库无法回答此问题」\n"
+    "2. **禁止使用外部知识**：不要使用你训练数据中记忆的任何激光器知识。"
+    "只使用下面提供的参考资料\n"
+    "3. **去重整合**：多个参考资料片段中重叠的内容只陈述一次，合并互补"
+    "信息形成一个完整答案\n"
+    "4. **禁止内联标记**：不要在正文中使用「【来源：xxx】」「[1]」"
+    "「（见xxx文档）」等行内引用\n"
+    "5. **来源标注**：在回答末尾列出「📚 参考文档」小节，格式：\n"
+    "   > 1. 《文档名》 — 第X页\n"
+    "   > 2. 《文档名》 — 第Y–Z页\n"
+    "6. **结构化输出**：优先使用 Markdown 标题/列表/表格，参数值带单位\n\n"
+    "## 回答框架\n"
+    "1. **答案概览**：用 1–3 句话给出核心结论\n"
+    "2. **分点详述**：按主题维度展开，每点聚焦一个独立信息单元\n"
+    "3. **参考文档**：末尾列出引用的知识库文档\n\n"
+    "{few_shot_examples}"
+)
+
+# Web search system prompt — used when KB is insufficient and web search
+# results are available, or when the user explicitly requests web search.
+RAG_SYSTEM_PROMPT_WEB: str = (
+    "你是激光器行业知识库专家助手，当前处于「网络搜索补充」模式。\n\n"
+    "## 规则\n"
+    "1. **优先使用网络搜索结果**：下面提供的「🌐 网络来源」是最新信息，"
+    "应优先作为答案来源\n"
+    "2. **如果网络搜索也无相关信息**：直接回答「抱歉，根据当前知识库无法"
+    "回答此问题」，不要编造\n"
+    "3. **知识库内容可结合使用**：如果下面同时提供了知识库参考资料，可以"
+    "结合使用，但所有非知识库来源的信息必须明确标注\n"
+    "4. **标注要求**：\n"
+    "   - 正文中非知识库信息前添加「根据网络搜索」标签\n"
+    "   - 回答末尾「📚 参考文档」中，网络来源使用 🌐 标记，格式：\n"
+    "     > 1. 🌐 《标题》 — URL\n"
+    "   - 知识库来源使用 📚 标记\n"
+    "5. **去重整合**：多个来源中重叠的内容合并陈述，只陈述一次\n"
+    "6. **禁止内联标记**：不要在正文中使用「【来源：xxx】」「[1]」等行内"
+    "引用\n"
+    "7. **结构化输出**：优先使用 Markdown 标题/列表/表格，参数值带单位\n\n"
+    "{few_shot_examples}"
+)
+
+# ===========================================================================
+#  Route-specific prompt builders
+# ===========================================================================
+
+
+def build_refuse_messages() -> list[dict[str, str]]:
+    """Build a minimal message list for the refuse route (Rule 2).
+
+    Returns messages that produce the static :data:`REFUSE_ANSWER` text.
+    Used as a signal to the Generator to emit a single-token response
+    without calling the LLM.
+    """
+    return [
+        {"role": "system", "content": "你是一个问答助手。请直接输出指定的回答。"},
+        {"role": "user", "content": REFUSE_ANSWER},
+    ]
+
+
+def build_web_prompt(
+    question: str,
+    kb_contexts: Sequence[Union[str, RerankerResult]],
+    web_context_block: str,
+    chat_history: list[dict[str, str]] | None = None,
+    *,
+    few_shot_examples: list[dict[str, str]] | None = _SENTINEL,  # type: ignore[assignment]
+    system_prompt: str | None = None,
+    max_context_chars: int | None = None,
+) -> list[dict[str, str]]:
+    """Build a message list for the web-search route (Rule 3).
+
+    Injects **both** KB contexts and web search results into the user
+    message, using the web-search system prompt.
+
+    Parameters
+    ----------
+    question:
+        The user's current question.
+    kb_contexts:
+        Retrieved / reranked chunks from the knowledge base (may be empty).
+    web_context_block:
+        Pre-formatted web search results string, e.g. from
+        :meth:`WebSearchResponse.to_context_block`.
+    chat_history:
+        Prior conversation turns.
+    few_shot_examples:
+        Few-shot examples for the web-search scenario.
+    system_prompt:
+        Override the web-search system prompt.
+    max_context_chars:
+        Truncation limit for the KB context block only (web block is not
+        truncated here).
+
+    Returns
+    -------
+    list[dict[str, str]]
+        Messages ready for the LLM chat-completions endpoint.
+    """
+    from config import settings
+
+    _s: Settings = settings
+
+    if system_prompt is None:
+        system_prompt = RAG_SYSTEM_PROMPT_WEB
+    if max_context_chars is None:
+        max_context_chars = _s.generation_max_context_chars
+    if few_shot_examples is _SENTINEL:
+        few_shot_examples = list(LASER_FEW_SHOT_EXAMPLES)
+
+    chat_history = chat_history or []
+
+    # Format KB contexts (half the budget — web gets the other half)
+    kb_text = _format_contexts(kb_contexts, max_context_chars // 2)
+
+    # Assemble combined context
+    combined_context = (
+        "## 知识库参考资料\n"
+        f"{kb_text}\n\n"
+        "## 网络搜索结果\n"
+        f"{web_context_block}"
+    )
+
+    # Build system message
+    fs_text = _format_few_shots(few_shot_examples) if few_shot_examples else ""
+    system_content = system_prompt.format(few_shot_examples=fs_text)
+
+    # Build user message with combined context
+    user_content = (
+        "你是激光器行业知识库专家助手。请根据以下参考资料（含知识库和网络"
+        "搜索）回答用户问题。优先使用网络搜索结果中的信息。\n\n"
+        "参考资料：\n"
+        f"{combined_context}\n\n"
+        f"用户问题：{question}\n\n"
+        "请遵循系统指令中的所有规则来组织回答。"
+    )
+
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": system_content},
+    ]
+    for msg in chat_history:
+        role = msg.get("role", "")
+        if role in ("user", "assistant"):
+            messages.append({"role": role, "content": msg.get("content", "")})
+
+    messages.append({"role": "user", "content": user_content})
+
+    logger.info(
+        "Web prompt built: system=%d chars, kb_context=%d chars, "
+        "web_context=%d chars, history=%d turns",
+        len(system_content),
+        len(kb_text),
+        len(web_context_block),
+        len(chat_history) // 2,
+    )
+    return messages

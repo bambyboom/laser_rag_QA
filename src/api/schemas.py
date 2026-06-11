@@ -44,6 +44,11 @@ class ChatRequest(BaseModel):
             ]
         ],
     )
+    enable_web_search: bool = Field(
+        default=False,
+        description="Whether to enable web search mode for this question. "
+        "When True, forces the pipeline to search the web for supplementary information.",
+    )
 
 
 class ReferenceModel(BaseModel):
@@ -53,6 +58,8 @@ class ReferenceModel(BaseModel):
     source: str = Field(..., description="Source filename or identifier.")
     text: str = Field(..., description="Snippet of the referenced context (first 200 chars).")
     page: int | None = Field(default=None, description="Page number if available.")
+    url: str | None = Field(default=None, description="URL for web-sourced references.")
+    is_web: bool = Field(default=False, description="Whether this is a web source (🌐) vs local KB (📚).")
 
 
 class ChatResponse(BaseModel):

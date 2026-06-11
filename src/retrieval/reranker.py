@@ -140,7 +140,7 @@ class Reranker:
         api_base: str | None = None,
         top_n: int | None = None,
         max_chunk_chars: int | None = None,
-        temperature: float = 0.0,
+        temperature: float = 0.1,
         timeout: float | None = None,
         enabled: bool | None = None,
         system_prompt: str | None = None,
